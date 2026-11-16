@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>模拟考试 · 党课题库练习中心</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero__brand">
+        <div class="hero__title-row">
+          <h1>党课题库练习中心</h1>
+          <div class="hero__badge">模拟考场</div>
+        </div>
+        <p class="hero__text">
+          按题型比例随机抽取 100 题组卷，支持答题卡快速跳题、交卷自动判分与错题沉淀。
+        </p>
+      </div>
+      <div class="hero__stats" id="hero-stats"></div>
+    </header>
+
+    <!-- 手机端首屏快捷操作条 -->
+    <nav class="mobile-quickbar" aria-label="考场快捷操作">
+      <button id="open-drawer-btn" type="button" class="button button--solid">📋 答题卡 / 控制</button>
+      <button id="quick-history-btn" type="button" class="button">历史试卷</button>
+      <a href="index.html" class="button" style="margin-left: auto;">← 返回练习</a>
+    </nav>
+
+    <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+    <main class="layout">
+      <aside id="controls-drawer" class="panel controls">
+        <div class="controls__header">
+          <div class="panel__title">考场控制面板</div>
+          <button id="close-drawer-btn" type="button" class="drawer-close" aria-label="关闭面板">&times;</button>
+        </div>
+
+        <!-- 1. 考场核心操作（全宽清晰按钮，修复原半宽撞色问题） -->
+        <div class="control-group">
+          <a href="index.html" class="button button--full">← 返回日常练习</a>
+          <div class="button-row">
+            <button id="generate-exam" type="button" class="button button--solid">重新组卷</button>
+            <button id="view-exam-history" type="button" class="button button--secondary">历史试卷</button>
+          </div>
+          <button id="toggle-wrong" type="button" class="button button--danger button--full hidden">☆ 加入错题本</button>
+        </div>
+
+        <!-- 2. 1-100 题可视化答题卡 -->
+        <div class="control-group question-grid-wrap">
+          <div class="control-group__label">
+            <span>答题卡</span>
+            <span id="grid-answered-summary">已答 0 / 100</span>
+          </div>
+          <div class="question-grid-legend">
+            <span class="legend-item"><i class="legend-dot" style="background:#fff;"></i>未答</span>
+            <span class="legend-item"><i class="legend-dot" style="background:var(--gold-soft);border-color:var(--gold);"></i>已答</span>
+            <span class="legend-item"><i class="legend-dot" style="background:var(--green-soft);border-color:var(--green);"></i>答对</span>
+            <span class="legend-item"><i class="legend-dot" style="background:rgba(179,30,35,0.16);border-color:var(--accent);"></i>答错</span>
+          </div>
+          <div id="exam-question-grid" class="question-grid"></div>
+        </div>
+
+        <!-- 3. 低频备份折叠收纳 -->
+        <details id="exam-record-box" class="fold-panel">
+          <summary>试卷记录备份（导出 / 导入）</summary>
+          <div class="fold-panel__body">
+            <div class="button-row">
+              <button id="export-exam-record" type="button" class="button">导出记录</button>
+              <button id="import-exam-record-trigger" type="button" class="button">导入记录</button>
+            </div>
+            <input id="import-exam-record" type="file" accept=".json,application/json" class="hidden-input" />
+          </div>
+        </details>
+      </aside>
+
+      <section class="panel practice">
+        <div id="exam-topline" class="practice__topline">
+          <div style="display:flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div id="exam-mode-badge" class="chip" style="background: var(--accent-deep); color: white;">模拟考试</div>
+            <div id="exam-position" class="chip chip--ghost">1 / 100</div>
+          </div>
+          <div style="display:flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div id="exam-review-filter-group" class="hidden" style="display:flex; gap: 6px;">
+              <button type="button" class="button exam-filter-btn" data-filter="all" style="padding: 6px 10px; font-size: 12px;">全部</button>
+              <button type="button" class="button exam-filter-btn" data-filter="correct" style="padding: 6px 10px; font-size: 12px;">只看答对</button>
+              <button type="button" class="button exam-filter-btn" data-filter="wrong" style="padding: 6px 10px; font-size: 12px;">只看答错</button>
+            </div>
+            <button id="inline-wrong-btn" type="button" class="button button--danger hidden" style="padding: 6px 10px; font-size: 12px;">取消错题</button>
+            <button id="exit-exam" type="button" class="button" style="padding: 7px 12px; font-size: 12px;">退出考场</button>
+            <button id="submit-exam" type="button" class="button button--solid" style="padding: 7px 14px; font-size: 13px;">立即交卷</button>
+          </div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-header">
+            <div id="progress-label">进度 1%</div>
+          </div>
+          <div class="progress-bar">
+            <div id="progress-fill"></div>
+          </div>
+        </div>
+
+        <article id="question-card" class="question-card">
+          <div id="question-meta" class="question-meta"></div>
+          <h2 id="question-stem">正在加载试卷数据…</h2>
+          <div id="fill-input-container" class="hidden" style="margin: 8px 0 14px;">
+            <input id="fill-answer-input" type="text" placeholder="在此输入填空答案…"
+              style="width: 100%; padding: 12px 14px; border: 1px solid rgba(179,30,35,0.28); border-radius: 12px; font-size: 15px; background: #fffdf9; outline: none;" />
+          </div>
+          <div id="option-list" class="option-list"></div>
+          <div id="option-actions" class="option-actions hidden">
+            <button id="submit-answer" type="button" class="button button--solid">确认选择</button>
+            <button id="reset-selection" type="button" class="button">重置选择</button>
+          </div>
+          <div id="answer-box" class="answer-box hidden"></div>
+          <div id="note-box" class="note-box hidden"></div>
+          <div id="explanation-box" class="explanation-box hidden desktop-only"></div>
+          <button id="view-explanation-mobile" type="button" class="button button--secondary hidden mobile-only"
+            style="margin-top: 14px; width: 100%;">查看答案解析</button>
+        </article>
+
+        <div class="practice-actions desktop-nav">
+          <button id="prev-question" type="button" class="button">← 上一题</button>
+          <button id="toggle-answer" type="button" class="button button--secondary hidden">显示答案</button>
+          <button id="next-question" type="button" class="button button--solid" style="grid-column: span 2;">下一题 →</button>
+        </div>
+
+        <div class="kbd-hint">
+          快捷键：<code>A-F</code> / <code>1-6</code> 选择选项 · <code>←</code> <code>→</code> 切换题目
+        </div>
+
+        <div class="mobile-nav">
+          <button id="prev-question-mobile" type="button" class="button">上一题</button>
+          <button id="mobile-card-trigger" type="button" class="button button--secondary">答题卡</button>
+          <button id="next-question-mobile" type="button" class="button button--solid">下一题</button>
+          <button id="toggle-answer-mobile" type="button" class="button hidden">显示答案</button>
+          <button id="inline-wrong-btn-mobile" type="button" class="button button--danger hidden" style="grid-column: 1 / -1;">从错题本移除此题</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="explanation-modal" class="modal hidden">
+    <div class="modal__overlay" id="modal-overlay"></div>
+    <div class="modal__content">
+      <div class="modal__header">
+        <h3 style="margin: 0; color: var(--accent-deep); font-size: 17px;">答案解析</h3>
+        <button id="modal-close" type="button" class="modal__close">&times;</button>
+      </div>
+      <div class="modal__body" id="modal-explanation-body"></div>
+    </div>
+  </div>
+
+  <div id="exam-result-modal" class="modal hidden">
+    <div class="modal__overlay" id="exam-result-overlay"></div>
+    <div class="modal__content">
+      <div class="modal__header">
+        <h3 style="margin: 0; color: var(--accent-deep); font-size: 17px;">考试成绩</h3>
+        <button id="exam-modal-close" type="button" class="modal__close">&times;</button>
+      </div>
+      <div class="modal__body" id="exam-result-body" style="text-align: center; padding: 28px 16px;">
+        <div style="font-size: 46px; font-weight: 800; color: var(--accent-deep); margin-bottom: 8px;" id="exam-score-display">0分</div>
+        <div style="color: var(--ink); font-size: 15px;" id="exam-score-detail">共 100 题，答对 0 题</div>
+      </div>
+      <div style="padding: 0 16px 18px; display: flex; justify-content: center; gap: 10px;">
+        <button id="exam-review-button" type="button" class="button button--solid">查看试卷解析</button>
+        <button id="exam-exit-button" type="button" class="button">再考一卷</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="exam-history-modal" class="modal hidden">
+    <div class="modal__overlay" id="exam-history-overlay"></div>
+    <div class="modal__content" style="max-width: 580px; max-height: 82vh;">
+      <div class="modal__header">
+        <h3 style="margin: 0; color: var(--accent-deep); font-size: 17px;">历史试卷记录</h3>
+        <button id="exam-history-close" type="button" class="modal__close">&times;</button>
+      </div>
+      <div class="modal__body" style="display: flex; flex-direction: column; gap: 10px;" id="exam-history-list">
+      </div>
+    </div>
+  </div>
+
+  <script src="./questions.js"></script>
+  <script src="./exam.js"></script>
+</body>
+
+</html>

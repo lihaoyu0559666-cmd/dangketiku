@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>党课题库练习中心</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero__brand">
+        <div class="hero__title-row">
+          <h1>党课题库练习中心</h1>
+          <div class="hero__badge">日常练习</div>
+        </div>
+        <p class="hero__text">
+          支持题型筛选、关键词检索、顺序/随机练习、错题复习与本地进度自动保存。
+        </p>
+      </div>
+      <div class="hero__stats" id="hero-stats"></div>
+    </header>
+
+    <!-- 手机端首屏快捷操作条（桌面端自动隐藏） -->
+    <nav class="mobile-quickbar" aria-label="快捷操作">
+      <button id="open-drawer-btn" type="button" class="button button--solid">⚙ 筛选 / 跳题</button>
+      <button id="quick-mode-toggle" type="button" class="button">顺序练习</button>
+      <button id="quick-wrong-review" type="button" class="button button--secondary">错题本</button>
+      <a href="exam.html" class="button" style="margin-left: auto;">模拟考试 →</a>
+    </nav>
+
+    <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+    <main class="layout">
+      <aside id="controls-drawer" class="panel controls">
+        <div class="controls__header">
+          <div class="panel__title">练习控制面板</div>
+          <button id="close-drawer-btn" type="button" class="drawer-close" aria-label="关闭面板">&times;</button>
+        </div>
+
+        <!-- 1. 模拟考试入口与练习模式 -->
+        <div class="control-group">
+          <a href="exam.html" class="button button--solid button--full">进入模拟考试 →</a>
+          <div class="control-group__label" style="margin-top: 4px;">
+            <span>出题模式</span>
+          </div>
+          <div class="segmented-control">
+            <button id="mode-sequential" type="button" class="button is-active">顺序练习</button>
+            <button id="mode-random" type="button" class="button">随机练习</button>
+          </div>
+          <label class="toggle-row">
+            <span>答对后自动跳下一题</span>
+            <input id="auto-next-toggle" type="checkbox" checked />
+          </label>
+        </div>
+
+        <!-- 2. 筛选、搜索与内联跳题 -->
+        <div class="control-group">
+          <label class="field">
+            <span>题型筛选</span>
+            <select id="type-filter">
+              <option value="全部">全部题型</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>关键词检索</span>
+            <input id="search-input" type="search" placeholder="输入题干或选项关键词…" />
+          </label>
+
+          <div class="field">
+            <span>跳转题目</span>
+            <div class="inline-input-group">
+              <input id="jump-input" type="text" placeholder="序号如 25 或 Q00025" />
+              <button id="jump-button" type="button" class="button button--secondary">跳转</button>
+            </div>
+          </div>
+          <div id="jump-status" class="jump-status">输入当前序号或题号快速定位。</div>
+        </div>
+
+        <!-- 3. 错题本管理 -->
+        <div class="control-group">
+          <div class="control-group__label">
+            <span>错题集管理</span>
+          </div>
+          <button id="toggle-wrong" type="button" class="button button--danger button--full">☆ 加入错题本</button>
+          <div class="button-row">
+            <button id="toggle-wrong-review" type="button" class="button">错题复习</button>
+            <button id="clear-wrong-set" type="button" class="button">清空错题</button>
+          </div>
+        </div>
+
+        <!-- 4. 低频功能折叠收纳：数据备份与自定义题库加载 -->
+        <details id="local-record-box" class="fold-panel">
+          <summary>数据备份与手动加载</summary>
+          <div class="fold-panel__body">
+            <div id="record-status" class="record-box__text">正在检查本地记录…</div>
+            <div class="button-row">
+              <button id="export-record" type="button" class="button">导出记录</button>
+              <button id="import-record-trigger" type="button" class="button">导入记录</button>
+            </div>
+            <input id="import-record" type="file" accept=".json,application/json" class="hidden-input" />
+
+            <button id="json-upload-trigger" type="button" class="button button--full" style="margin-top: 4px;">
+              手动加载本地 JSON 题库
+            </button>
+            <input id="json-upload" type="file" accept=".json,application/json" class="hidden-input" />
+          </div>
+        </details>
+      </aside>
+
+      <section class="panel practice">
+        <div id="normal-topline" class="practice__topline">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div id="result-count" class="chip">题目载入中</div>
+            <div id="question-position" class="chip chip--ghost">0 / 0</div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="inline-wrong-btn" type="button" class="button button--danger hidden" style="padding: 5px 10px; font-size: 12px;">移除错题</button>
+          </div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-header">
+            <div id="progress-label">进度 0%</div>
+          </div>
+          <div class="progress-bar">
+            <div id="progress-fill"></div>
+          </div>
+        </div>
+
+        <article id="question-card" class="question-card">
+          <div id="question-meta" class="question-meta"></div>
+          <h2 id="question-stem">正在加载题库数据…</h2>
+
+          <div id="option-list" class="option-list"></div>
+          <div id="option-actions" class="option-actions hidden">
+            <button id="submit-answer" type="button" class="button button--solid">提交答案</button>
+            <button id="reset-selection" type="button" class="button">重置选择</button>
+          </div>
+          <div id="answer-box" class="answer-box hidden"></div>
+          <div id="note-box" class="note-box hidden"></div>
+          <div id="explanation-box" class="explanation-box hidden desktop-only"></div>
+          <button id="view-explanation-mobile" type="button" class="button button--secondary hidden mobile-only"
+            style="margin-top: 14px; width: 100%;">查看答案解析</button>
+        </article>
+
+        <!-- 桌面端底部稳固三列导航 -->
+        <div class="practice-actions desktop-nav">
+          <button id="prev-question" type="button" class="button">← 上一题</button>
+          <button id="toggle-answer" type="button" class="button button--secondary">显示答案</button>
+          <button id="next-question" type="button" class="button button--solid">下一题 →</button>
+        </div>
+
+        <div class="kbd-hint">
+          快捷键：<code>A-F</code> / <code>1-6</code> 选择选项 · <code>←</code> <code>→</code> 切换题目 · <code>Space</code> 显示答案 · <code>S</code> 标记错题
+        </div>
+
+        <!-- 手机端底部固定单手操作栏 -->
+        <div class="mobile-nav">
+          <button id="prev-question-mobile" type="button" class="button">上一题</button>
+          <button id="toggle-answer-mobile" type="button" class="button button--secondary">显示答案</button>
+          <button id="next-question-mobile" type="button" class="button button--solid">下一题</button>
+          <button id="inline-wrong-btn-mobile" type="button" class="button button--danger hidden" style="grid-column: 1 / -1;">从错题本移除此题</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="explanation-modal" class="modal hidden">
+    <div class="modal__overlay" id="modal-overlay"></div>
+    <div class="modal__content">
+      <div class="modal__header">
+        <h3 style="margin: 0; color: var(--accent-deep); font-size: 17px;">答案解析</h3>
+        <button id="modal-close" type="button" class="modal__close">&times;</button>
+      </div>
+      <div class="modal__body" id="modal-explanation-body"></div>
+    </div>
+  </div>
+
+  <script src="./questions.js"></script>
+  <script src="./app.js"></script>
+</body>
+
+</html>
